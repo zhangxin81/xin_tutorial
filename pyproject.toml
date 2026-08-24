@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xin-tutorial"
+version = "0.1.0"
+description = "GPU 计算与通信融合入门：NCCL/NVSHMEM/peer-write/copy-engine 四个可运行示例"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "zhangxin81" }]
+requires-python = ">=3.9"
+keywords = [
+    "cuda",
+    "nccl",
+    "nvshmem",
+    "collective-communication",
+    "compute-communication-overlap",
+    "gemm",
+    "reduce-scatter",
+    "tutorial",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Distributed Computing",
+]
+# 核心工具（xin-tutorial check/info）只用标准库，保证无 GPU 机器也能安装。
+# 示例一需要 torch，通过 extra 安装：pip install "xin-tutorial[torch]"
+dependencies = []
+
+[project.optional-dependencies]
+torch = ["torch>=2.1"]
+dev = ["ruff>=0.4"]
+
+[project.scripts]
+xin-tutorial = "xin_tutorial.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/zhangxin81/xin_tutorial"
+
+[tool.setuptools]
+packages = ["xin_tutorial"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"

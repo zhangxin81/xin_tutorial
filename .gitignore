@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# CUDA 构建产物
+*.o
+*.out
+
+# profiler 产物
+*.nsys-rep
+*.qdrep
+*.qdstrc
+*.ncu-rep
+
+# 编辑器/系统
+.DS_Store
+.idea/
+.vscode/
