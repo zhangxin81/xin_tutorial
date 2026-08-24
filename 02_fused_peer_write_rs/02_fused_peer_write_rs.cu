@@ -14,13 +14,15 @@
 // 说明：这里 GEMM 是朴素 O(MNK) 教学实现。生产版本会使用 Tensor Core tile、
 // 双缓冲、vectorized remote write 和更细的 signal。
 //
-// 运行：
-//   nvcc -O2 -std=c++17 02_fused_peer_write_rs.cu -o fused_peer_write_rs
-//   ./fused_peer_write_rs                  # 默认 M=N=K=512
-//   ./fused_peer_write_rs 1024 1024 1024   # 自定义规模（M 必须为偶数）
+// 运行（本目录自带独立环境说明，见 README.md；一键脚本 ./build_and_run.sh）：
+//   ./build_and_run.sh                     # 默认 M=N=K=512
+//   ./build_and_run.sh 1024 1024 1024      # 自定义规模（M、K 需为偶数）
+// 或手动：
+//   nvcc -O2 -std=c++17 02_fused_peer_write_rs.cu -o build/fused_peer_write_rs
+//   ./build/fused_peer_write_rs
 //
 // profiling：
-//   nsys profile -o 02_peer_write --force-overwrite true ./fused_peer_write_rs
+//   nsys profile -o 02_peer_write --force-overwrite true ./build/fused_peer_write_rs
 //   nsys-ui 02_peer_write.nsys-rep
 //
 // 硬件要求：同一台机器上至少 2 张支持 P2P 的 NVIDIA GPU。

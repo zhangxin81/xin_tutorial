@@ -9,13 +9,15 @@
 // stream 的事件计时只能给出“可能重叠”的提示（并发耗时明显小于串行耗时），
 // 最终仍要用 Nsight Systems 看 timeline 上 memcpy 是否落在 copy engine lane。
 //
-// 运行：
-//   nvcc -O2 -std=c++17 04_copy_engine_near_zero_sm.cu -o copy_engine_near_zero_sm
-//   ./copy_engine_near_zero_sm            # 默认搬运 128 MiB
-//   ./copy_engine_near_zero_sm 256        # 自定义 MiB 数
+// 运行（本目录自带独立环境说明，见 README.md；一键脚本 ./build_and_run.sh）：
+//   ./build_and_run.sh                    # 默认搬运 128 MiB
+//   ./build_and_run.sh 256                # 自定义 MiB 数
+// 或手动：
+//   nvcc -O2 -std=c++17 04_copy_engine_near_zero_sm.cu -o build/copy_engine_near_zero_sm
+//   ./build/copy_engine_near_zero_sm
 //
 // profiling：
-//   nsys profile -o 04_copy_engine --force-overwrite true ./copy_engine_near_zero_sm
+//   nsys profile -o 04_copy_engine --force-overwrite true ./build/copy_engine_near_zero_sm
 //   nsys-ui 04_copy_engine.nsys-rep       # 看 memcpy 行是否与 SM kernel 并发
 //
 // 硬件要求：同一台机器上至少 2 张支持 P2P 的 NVIDIA GPU。

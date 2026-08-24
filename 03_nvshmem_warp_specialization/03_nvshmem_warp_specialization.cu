@@ -14,19 +14,20 @@
 // 协作搬运。生产实现通常加入双缓冲、ready signal、tile 状态机，并避免
 // producer warp 长时间阻塞。
 //
-// 运行：
+// 运行（本目录自带独立环境说明，见 README.md；一键脚本 ./build_and_run.sh）：
 //   export NVSHMEM_HOME=/path/to/nvshmem
+//   ./build_and_run.sh                     # 默认 N=1<<20，compute_iters=128
+//   ./build_and_run.sh 4194304 256         # 自定义规模
+// 或手动：
 //   nvcc -O2 -std=c++17 -rdc=true \
 //       -I${NVSHMEM_HOME}/include 03_nvshmem_warp_specialization.cu \
 //       -L${NVSHMEM_HOME}/lib -lnvshmem_host -lnvshmem_device \
-//       -o nvshmem_warp_specialization
-//   ${NVSHMEM_HOME}/bin/nvshmrun -np 2 ./nvshmem_warp_specialization
-//   # 自定义规模：
-//   nvshmrun -np 2 ./nvshmem_warp_specialization 4194304 256
+//       -o build/nvshmem_warp_specialization
+//   ${NVSHMEM_HOME}/bin/nvshmrun -np 2 ./build/nvshmem_warp_specialization
 //
 // profiling：
 //   nsys profile -o 03_nvshmem --force-overwrite true \
-//       ${NVSHMEM_HOME}/bin/nvshmrun -np 2 ./nvshmem_warp_specialization
+//       ${NVSHMEM_HOME}/bin/nvshmrun -np 2 ./build/nvshmem_warp_specialization
 //
 // 硬件要求：同一台机器上至少 2 张支持 P2P 的 NVIDIA GPU + NVSHMEM 库。
 

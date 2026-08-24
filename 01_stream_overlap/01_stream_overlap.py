@@ -11,7 +11,8 @@ kernel / stream 级并发，通信 kernel 通常仍会占用少量 SM。
   - PyTorch 要求：异步 collective 的输出被其他 stream 消费前，必须先
     work.wait()（参见 PyTorch distributed 文档的 stream 语义说明）。
 
-运行：
+运行（本目录自带独立环境配置，见 pyproject.toml / README.md）：
+  pip install .
   torchrun --standalone --nproc-per-node=2 01_stream_overlap.py
   # 自定义规模：
   torchrun --standalone --nproc-per-node=2 01_stream_overlap.py \

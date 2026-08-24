@@ -1,0 +1,24 @@
+# 任务 01：NCCL all-gather 与独立 GEMM 的 stream 级重叠（独立环境配置）
+#
+# 安装方式（在本目录下）：
+#   python3 -m venv .venv && source .venv/bin/activate
+#   pip install .
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xin-tutorial-01-stream-overlap"
+version = "0.1.0"
+description = "教程示例一：NCCL collective 与独立 GEMM 在不同 CUDA stream 上重叠"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "torch>=2.1",
+]
+
+[tool.setuptools]
+# 本任务是可直接运行的脚本，不提供可导入的 Python 包。
+packages = []
