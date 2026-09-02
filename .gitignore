@@ -12,6 +12,8 @@ venv/
 *.out
 
 # profiler 产物
+profiles/
+*/profiles/
 *.nsys-rep
 *.qdrep
 *.qdstrc
