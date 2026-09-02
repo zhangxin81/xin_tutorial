@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 任务 02：编译并运行 GEMM+RS peer write 示例。
-# 用法: ./build_and_run.sh [M] [N] [K]   （参数透传给二进制，默认 512 512 512）
+# 用法: ./build_and_run.sh [M] [N] [K] [WARMUP_ITERS] [REPEAT_ITERS]
+# 参数透传给二进制，默认 512 512 512 2 5。
 # 环境要求见本目录 README.md（>=2 张支持 P2P 的 GPU + nvcc）。
 set -euo pipefail
 cd "$(dirname "$0")"

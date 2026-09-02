@@ -33,9 +33,33 @@ torchrun --standalone --nproc-per-node=2 01_stream_overlap.py
 # 自定义规模（减小可降低显存与耗时）
 torchrun --standalone --nproc-per-node=2 01_stream_overlap.py \
     --rows-per-rank 4096 --hidden 4096
+
+# 导出每个 rank 的 chrome trace，并打印计算/通信 overlap 窗口
+torchrun --standalone --nproc-per-node=2 01_stream_overlap.py \
+    --rows-per-rank 4096 --hidden 4096 \
+    --warmup-iters 2 --iters 4 --profile --profile-dir ./profiles
+
+# 推荐的重叠观测配置：通信量和 GEMM 都更大，更容易在 kernel timeline 看到重叠
+torchrun --standalone --nproc-per-node=2 01_stream_overlap.py \
+    --overlap-demo \
+    --warmup-iters 2 --iters 4 \
+    --profile --profile-dir ./profiles \
+    --require-kernel-overlap-us 100
 ```
 
-参数：`--rows-per-rank`（默认 2048）、`--hidden`（默认 2048）、`--seed`（默认 0）。
+参数：
+- `--rows-per-rank`（默认 2048）
+- `--hidden`（默认 2048）
+- `--gemm-m` / `--gemm-n` / `--gemm-k`：独立 GEMM 的矩阵维度，默认都等于
+  `--hidden`
+- `--seed`（默认 0）
+- `--warmup-iters`（默认 2）：预热轮数
+- `--iters`（默认 3）：正式计时轮数
+- `--profile`：开启 `torch.profiler` 并导出 chrome trace
+- `--profile-dir`（默认 `./profiles`）：trace 和 overlap JSON 输出目录
+- `--overlap-demo`：覆盖为推荐规模，用于稳定观测 kernel 级 overlap
+- `--require-kernel-overlap-us`：开启 `--profile` 时，要求每个 rank 的真实 CUDA
+  kernel overlap 至少达到指定微秒数，否则程序报错
 
 ## 正确性校验
 
@@ -44,10 +68,32 @@ torchrun --standalone --nproc-per-node=2 01_stream_overlap.py \
 
 ## profiling
 
+脚本内部 trace 检查：
+
+```bash
+torchrun --standalone --nproc-per-node=2 01_stream_overlap.py \
+    --overlap-demo \
+    --warmup-iters 2 --iters 4 \
+    --profile --profile-dir ./profiles \
+    --require-kernel-overlap-us 100
+```
+
+Nsight Systems report：
+
 ```bash
 nsys profile -o report01 --force-overwrite true \
-    torchrun --standalone --nproc-per-node=2 01_stream_overlap.py
+    --trace=cuda,nvtx,osrt \
+    torchrun --standalone --nproc-per-node=2 01_stream_overlap.py \
+    --overlap-demo \
+    --warmup-iters 2 --iters 4
 nsys-ui report01.nsys-rep
 ```
 
-观察要点：NCCL kernel 与 GEMM kernel 是否在两条 stream 的 timeline 上并发。
+观察要点：
+- 终端会打印每个 rank 的 `comm` / `compute` 时间窗口，以及 `overlap` 时长与占比。
+- `./profiles/rank*.json` 是 `torch.profiler` 导出的 chrome trace，可用浏览器或 Perfetto 打开。
+- `./profiles/rank*_kernel_overlap.json` 是脚本从 chrome trace 中解析出的真实 CUDA
+  kernel overlap 摘要，包含 NCCL kernel、GEMM kernel 的时间区间和重叠时长。
+- Nsight Systems 里可结合 NVTX 区间 `rank*:all_gather` 和 `rank*:independent_gemm`，观察 NCCL kernel 与 GEMM kernel 是否在两条 stream 的 timeline 上并发。
+- 不要在外层 `nsys profile` 时同时传脚本的 `--profile`，否则 Nsight Systems 和
+  `torch.profiler` 会同时订阅 CUPTI，内层 PyTorch trace 可能缺 CUDA activity。

@@ -11,13 +11,13 @@
 //
 // 运行（本目录自带独立环境说明，见 README.md；一键脚本 ./build_and_run.sh）：
 //   ./build_and_run.sh                    # 默认搬运 128 MiB
-//   ./build_and_run.sh 256                # 自定义 MiB 数
+//   ./build_and_run.sh 256 4096           # 自定义 MiB 数和计算量
 // 或手动：
 //   nvcc -O2 -std=c++17 04_copy_engine_near_zero_sm.cu -o build/copy_engine_near_zero_sm
-//   ./build/copy_engine_near_zero_sm
+//   ./build/copy_engine_near_zero_sm 256 4096
 //
 // profiling：
-//   nsys profile -o 04_copy_engine --force-overwrite true ./build/copy_engine_near_zero_sm
+//   nsys profile -o 04_copy_engine --force-overwrite true ./build/copy_engine_near_zero_sm 256 4096
 //   nsys-ui 04_copy_engine.nsys-rep       # 看 memcpy 行是否与 SM kernel 并发
 //
 // 硬件要求：同一台机器上至少 2 张支持 P2P 的 NVIDIA GPU。
@@ -37,27 +37,29 @@
   } \
 } while (0)
 
-__global__ void busy_compute(float* out, size_t n) {
+__global__ void busy_compute(float* out, size_t n, int compute_iters) {
   size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n) return;
   float x = static_cast<float>(i % 1024) * 0.001f + 1.0f;
-  for (int r = 0; r < 128; ++r) x = fmaf(x, 1.000001f, 0.000001f);
+  for (int r = 0; r < compute_iters; ++r) x = fmaf(x, 1.000001f, 0.000001f);
   out[i] = x;
 }
 
-// 用法: ./copy_engine_near_zero_sm [MIB]，默认 128。
-static int parse_mib(int argc, char** argv) {
-  int mib = 128;
-  if (argc >= 2) mib = std::atoi(argv[1]);
-  if (mib <= 0) {
-    std::fprintf(stderr, "要求 MIB 为正整数\n");
+// 用法: ./copy_engine_near_zero_sm [MIB] [COMPUTE_ITERS]，默认 128 MiB / 2048。
+static void parse_args(int argc, char** argv, int* mib, int* compute_iters) {
+  *mib = 128;
+  *compute_iters = 2048;
+  if (argc >= 2) *mib = std::atoi(argv[1]);
+  if (argc >= 3) *compute_iters = std::atoi(argv[2]);
+  if (*mib <= 0 || *compute_iters <= 0) {
+    std::fprintf(stderr, "要求 MIB、COMPUTE_ITERS 为正整数\n");
     std::exit(2);
   }
-  return mib;
 }
 
 int main(int argc, char** argv) {
-  const int mib = parse_mib(argc, argv);
+  int mib = 0, compute_iters = 0;
+  parse_args(argc, argv, &mib, &compute_iters);
 
   int count = 0;
   CUDA_CHECK(cudaGetDeviceCount(&count));
@@ -99,7 +101,8 @@ int main(int argc, char** argv) {
   cudaStream_t compute_stream, copy_stream;
   CUDA_CHECK(cudaStreamCreate(&compute_stream));
   CUDA_CHECK(cudaStreamCreate(&copy_stream));
-  cudaEvent_t compute_start, compute_end, copy_start, copy_end;
+  cudaEvent_t anchor, compute_start, compute_end, copy_start, copy_end;
+  CUDA_CHECK(cudaEventCreate(&anchor));
   CUDA_CHECK(cudaEventCreate(&compute_start));
   CUDA_CHECK(cudaEventCreate(&compute_end));
   CUDA_CHECK(cudaEventCreate(&copy_start));
@@ -107,8 +110,11 @@ int main(int argc, char** argv) {
 
   const int threads = 256;
   const int blocks = static_cast<int>((N + threads - 1) / threads);
+  CUDA_CHECK(cudaEventRecord(anchor, 0));
+  CUDA_CHECK(cudaStreamWaitEvent(compute_stream, anchor, 0));
+  CUDA_CHECK(cudaStreamWaitEvent(copy_stream, anchor, 0));
   CUDA_CHECK(cudaEventRecord(compute_start, compute_stream));
-  busy_compute<<<blocks, threads, 0, compute_stream>>>(compute0, N);
+  busy_compute<<<blocks, threads, 0, compute_stream>>>(compute0, N, compute_iters);
   CUDA_CHECK(cudaGetLastError());
   CUDA_CHECK(cudaEventRecord(compute_end, compute_stream));
   CUDA_CHECK(cudaEventRecord(copy_start, copy_stream));
@@ -119,9 +125,19 @@ int main(int argc, char** argv) {
   CUDA_CHECK(cudaStreamSynchronize(copy_stream));
 
   float compute_ms = 0.0f, copy_ms = 0.0f;
+  float compute_start_ms = 0.0f, compute_end_ms = 0.0f;
+  float copy_start_ms = 0.0f, copy_end_ms = 0.0f;
   CUDA_CHECK(cudaEventElapsedTime(&compute_ms, compute_start, compute_end));
   CUDA_CHECK(cudaEventElapsedTime(&copy_ms, copy_start, copy_end));
-  const float span_ms = std::max(compute_ms, copy_ms);  // 事件零点相同，可取 max 估计并发区间
+  CUDA_CHECK(cudaEventElapsedTime(&compute_start_ms, anchor, compute_start));
+  CUDA_CHECK(cudaEventElapsedTime(&compute_end_ms, anchor, compute_end));
+  CUDA_CHECK(cudaEventElapsedTime(&copy_start_ms, anchor, copy_start));
+  CUDA_CHECK(cudaEventElapsedTime(&copy_end_ms, anchor, copy_end));
+  const float overlap_start_ms = std::max(compute_start_ms, copy_start_ms);
+  const float overlap_end_ms = std::min(compute_end_ms, copy_end_ms);
+  const float overlap_ms = std::max(0.0f, overlap_end_ms - overlap_start_ms);
+  const float span_ms = std::max(compute_end_ms, copy_end_ms) -
+                        std::min(compute_start_ms, copy_start_ms);
   const float serial_ms = compute_ms + copy_ms;
 
   // src0 被置零，所以 peer copy 后 dst1 的抽样值也应为 0。
@@ -144,6 +160,7 @@ int main(int argc, char** argv) {
     }
   }
 
+  cudaEventDestroy(anchor);
   cudaEventDestroy(compute_start); cudaEventDestroy(compute_end);
   cudaEventDestroy(copy_start); cudaEventDestroy(copy_end);
   cudaStreamDestroy(compute_stream);
@@ -153,9 +170,13 @@ int main(int argc, char** argv) {
   CUDA_CHECK(cudaSetDevice(1));
   cudaFree(dst1);
 
-  std::printf("PASS: peer copy and SM compute both completed (%d MiB)\n", mib);
-  std::printf("compute=%.3f ms, copy=%.3f ms, wall≈%.3f ms (串行则≈%.3f ms)\n",
-              compute_ms, copy_ms, span_ms, serial_ms);
+  std::printf("PASS: peer copy and SM compute both completed (%d MiB, compute_iters=%d)\n",
+              mib, compute_iters);
+  std::printf("compute=%.3f ms [%.3f, %.3f], copy=%.3f ms [%.3f, %.3f], "
+              "overlap=%.3f ms, wall=%.3f ms (串行则≈%.3f ms)\n",
+              compute_ms, compute_start_ms, compute_end_ms,
+              copy_ms, copy_start_ms, copy_end_ms,
+              overlap_ms, span_ms, serial_ms);
   std::printf("wall 明显小于串行说明大概率已并发；是否走 copy engine，仍需 Nsight Systems 确认。\n");
   return 0;
 }

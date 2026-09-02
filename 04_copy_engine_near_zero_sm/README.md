@@ -23,10 +23,15 @@ Systems 看 memcpy 是否落在 copy engine lane。
 cd 04_copy_engine_near_zero_sm
 ./build_and_run.sh              # 编译到 ./build/ 并运行，默认搬运 128 MiB
 ./build_and_run.sh 256          # 参数为 MiB 数，透传给二进制
+./build_and_run.sh 256 4096     # 第二个参数增大 SM 计算量，便于观察 overlap
 # 或手动：
 nvcc -O2 -std=c++17 04_copy_engine_near_zero_sm.cu -o build/copy_engine_near_zero_sm
-./build/copy_engine_near_zero_sm
+./build/copy_engine_near_zero_sm 256 4096
 ```
+
+参数：`MIB COMPUTE_ITERS`。`MIB` 是 peer copy 大小，`COMPUTE_ITERS` 是每个元素
+执行的 FMA 轮数。增大 `COMPUTE_ITERS` 会拉长 SM kernel，方便在 Nsight Systems
+里看到 copy engine 与 SM compute 并发。
 
 ## 正确性校验
 
@@ -36,7 +41,7 @@ src 缓冲区置零，peer copy 后 dst 抽样应为 0；compute 输出必须有
 ## profiling
 
 ```bash
-nsys profile -o report04 --force-overwrite true ./build/copy_engine_near_zero_sm
+nsys profile -o report04 --force-overwrite true ./build/copy_engine_near_zero_sm 256 4096
 nsys-ui report04.nsys-rep
 ```
 

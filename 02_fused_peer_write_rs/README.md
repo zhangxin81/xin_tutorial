@@ -31,10 +31,12 @@ cd 02_fused_peer_write_rs
 ./build_and_run.sh                    # 编译到 ./build/ 并运行，参数透传
 # 或手动：
 nvcc -O2 -std=c++17 02_fused_peer_write_rs.cu -o build/fused_peer_write_rs
-./build/fused_peer_write_rs 1024 1024 1024   # M N K（默认 512 512 512）
+./build/fused_peer_write_rs 1024 1024 1024 2 5
 ```
 
-参数：`M N K`（均需为正整数，M、K 为偶数——2 卡各分一半）。
+参数：`M N K WARMUP_ITERS REPEAT_ITERS`。`M/N/K` 均需为正整数，`M/K` 为偶数
+（2 卡各分一半）。后两个参数用于预热和重复采样，让 Nsight Systems 里能看到
+多轮 `partial_gemm_peer_write` kernel 并发，降低首轮初始化噪声。
 
 ## 正确性校验
 
@@ -44,7 +46,7 @@ A、B 全 1，则输出每个元素都应等于 K，误差容忍 1e-5。打印 `
 ## profiling
 
 ```bash
-nsys profile -o report02 --force-overwrite true ./build/fused_peer_write_rs
+nsys profile -o report02 --force-overwrite true ./build/fused_peer_write_rs 512 512 512 2 5
 nsys-ui report02.nsys-rep
 ```
 

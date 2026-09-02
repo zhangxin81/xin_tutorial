@@ -55,6 +55,7 @@ __global__ void comm_compute_kernel(
     const float* symmetric_send,
     float* symmetric_recv,
     float* local_compute,
+    unsigned long long* timing,
     int n, int mype, int npes, int compute_iters) {
   const int warp = threadIdx.x / warpSize;
   const int lane = threadIdx.x % warpSize;
@@ -62,18 +63,22 @@ __global__ void comm_compute_kernel(
   if (warp == 0) {
     if (lane == 0) {
       const int peer = (mype + 1) % npes;
+      timing[0] = clock64();
       nvshmem_float_put(symmetric_recv, symmetric_send, n, peer);
       nvshmem_quiet();  // 确保本 PE 发起的 put 远端完成后再退出 producer 路径。
+      timing[1] = clock64();
     }
   } else {
     const int compute_tid = (warp - 1) * warpSize + lane;
     const int compute_threads = (blockDim.x / warpSize - 1) * warpSize;
+    if (threadIdx.x == warpSize) timing[2] = clock64();
     for (int i = compute_tid; i < n; i += compute_threads) {
       float x = static_cast<float>(i + 1);
       // 多做一些独立计算，让 profiler 更容易看到 overlap。
       for (int r = 0; r < compute_iters; ++r) x = fmaf(x, 1.00001f, 0.00001f);
       local_compute[i] = x;
     }
+    if (threadIdx.x == warpSize) timing[3] = clock64();
   }
 }
 
@@ -111,7 +116,9 @@ int main(int argc, char** argv) {
   float* send = static_cast<float*>(nvshmem_malloc(bytes));
   float* recv = static_cast<float*>(nvshmem_malloc(bytes));
   float* compute = nullptr;
+  unsigned long long* timing = nullptr;
   CUDA_CHECK(cudaMalloc(&compute, bytes));
+  CUDA_CHECK(cudaMalloc(&timing, 4 * sizeof(unsigned long long)));
   if (!send || !recv) {
     std::fprintf(stderr, "PE %d: nvshmem_malloc failed\n", mype);
     nvshmem_global_exit(3);
@@ -121,6 +128,7 @@ int main(int argc, char** argv) {
   CUDA_CHECK(cudaMemcpy(send, host_send.data(), bytes, cudaMemcpyHostToDevice));
   CUDA_CHECK(cudaMemset(recv, 0, bytes));
   CUDA_CHECK(cudaMemset(compute, 0, bytes));
+  CUDA_CHECK(cudaMemset(timing, 0, 4 * sizeof(unsigned long long)));
   nvshmem_barrier_all();
 
   cudaStream_t stream;
@@ -131,7 +139,7 @@ int main(int argc, char** argv) {
 
   CUDA_CHECK(cudaEventRecord(start, stream));
   comm_compute_kernel<<<1, 256, 0, stream>>>(
-      send, recv, compute, N, mype, npes, compute_iters);
+      send, recv, compute, timing, N, mype, npes, compute_iters);
   CUDA_CHECK(cudaGetLastError());
 
   // 等待所有 PE 的 kernel/远端写结束，再读取 recv。
@@ -143,8 +151,10 @@ int main(int argc, char** argv) {
 
   std::vector<float> host_recv(N);
   std::vector<float> host_compute(N);
+  unsigned long long host_timing[4] = {};
   CUDA_CHECK(cudaMemcpy(host_recv.data(), recv, bytes, cudaMemcpyDeviceToHost));
   CUDA_CHECK(cudaMemcpy(host_compute.data(), compute, bytes, cudaMemcpyDeviceToHost));
+  CUDA_CHECK(cudaMemcpy(host_timing, timing, sizeof(host_timing), cudaMemcpyDeviceToHost));
 
   const int previous = (mype - 1 + npes) % npes;
   bool ok = true;
@@ -159,10 +169,22 @@ int main(int argc, char** argv) {
 
   std::printf("PE %d/%d: %s (N=%d, compute_iters=%d, kernel+barrier=%.3f ms)\n",
               mype, npes, ok ? "PASS" : "FAIL", N, compute_iters, kernel_ms);
+  const unsigned long long comm_start = host_timing[0];
+  const unsigned long long comm_end = host_timing[1];
+  const unsigned long long compute_start = host_timing[2];
+  const unsigned long long compute_end = host_timing[3];
+  const unsigned long long overlap_start = std::max(comm_start, compute_start);
+  const unsigned long long overlap_end = std::min(comm_end, compute_end);
+  const unsigned long long overlap_cycles =
+      overlap_end > overlap_start ? overlap_end - overlap_start : 0;
+  std::printf("PE %d warp timing cycles: comm=[%llu, %llu] compute=[%llu, %llu] "
+              "overlap=%llu cycles\n",
+              mype, comm_start, comm_end, compute_start, compute_end, overlap_cycles);
   cudaEventDestroy(start);
   cudaEventDestroy(end);
   cudaStreamDestroy(stream);
   cudaFree(compute);
+  cudaFree(timing);
   nvshmem_free(send);
   nvshmem_free(recv);
   nvshmem_finalize();

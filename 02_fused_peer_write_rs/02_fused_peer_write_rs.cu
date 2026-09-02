@@ -16,10 +16,10 @@
 //
 // 运行（本目录自带独立环境说明，见 README.md；一键脚本 ./build_and_run.sh）：
 //   ./build_and_run.sh                     # 默认 M=N=K=512
-//   ./build_and_run.sh 1024 1024 1024      # 自定义规模（M、K 需为偶数）
+//   ./build_and_run.sh 1024 1024 1024 2 5  # 自定义规模、预热轮数、重复轮数
 // 或手动：
 //   nvcc -O2 -std=c++17 02_fused_peer_write_rs.cu -o build/fused_peer_write_rs
-//   ./build/fused_peer_write_rs
+//   ./build/fused_peer_write_rs 1024 1024 1024 2 5
 //
 // profiling：
 //   nsys profile -o 02_peer_write --force-overwrite true ./build/fused_peer_write_rs
@@ -84,21 +84,31 @@ static void enable_peer_or_die(int from, int to) {
   if (e == cudaErrorPeerAccessAlreadyEnabled) cudaGetLastError();
 }
 
-// 用法: ./fused_peer_write_rs [M] [N] [K]，默认 512 512 512。
-static void parse_args(int argc, char** argv, int* m, int* n, int* k) {
+// 用法: ./fused_peer_write_rs [M] [N] [K] [WARMUP_ITERS] [REPEAT_ITERS]。
+// 默认 512 512 512 2 5。
+static void parse_args(
+    int argc, char** argv, int* m, int* n, int* k,
+    int* warmup_iters, int* repeat_iters) {
   *m = 512; *n = 512; *k = 512;
+  *warmup_iters = 2; *repeat_iters = 5;
   if (argc >= 2) *m = std::atoi(argv[1]);
   if (argc >= 3) *n = std::atoi(argv[2]);
   if (argc >= 4) *k = std::atoi(argv[3]);
+  if (argc >= 5) *warmup_iters = std::atoi(argv[4]);
+  if (argc >= 6) *repeat_iters = std::atoi(argv[5]);
   if (*m <= 0 || *n <= 0 || *k <= 0 || (*m % 2) != 0 || (*k % 2) != 0) {
     std::fprintf(stderr, "要求 M、N、K 为正数，且 M、K 为偶数（2 卡各分一半）\n");
+    std::exit(2);
+  }
+  if (*warmup_iters < 0 || *repeat_iters <= 0) {
+    std::fprintf(stderr, "要求 WARMUP_ITERS 非负，REPEAT_ITERS 为正数\n");
     std::exit(2);
   }
 }
 
 int main(int argc, char** argv) {
-  int M = 0, N = 0, K = 0;
-  parse_args(argc, argv, &M, &N, &K);
+  int M = 0, N = 0, K = 0, warmup_iters = 0, repeat_iters = 0;
+  parse_args(argc, argv, &M, &N, &K, &warmup_iters, &repeat_iters);
 
   int device_count = 0;
   CUDA_CHECK(cudaGetDeviceCount(&device_count));
@@ -136,22 +146,42 @@ int main(int argc, char** argv) {
     CUDA_CHECK(cudaMemcpyAsync(b[rank], h_b.data(), h_b.size() * sizeof(float), cudaMemcpyHostToDevice, stream[rank]));
     CUDA_CHECK(cudaMemsetAsync(owner_slots[rank], 0, WORLD * part_elems * sizeof(float), stream[rank]));
   }
-
-  dim3 block(16, 16);
-  dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
-  for (int rank = 0; rank < WORLD; ++rank) {
-    CUDA_CHECK(cudaSetDevice(rank));
-    CUDA_CHECK(cudaEventRecord(gemm_start[rank], stream[rank]));
-    partial_gemm_peer_write<<<grid, block, 0, stream[rank]>>>(
-        a[rank], b[rank], owner_slots[0], owner_slots[1], rank, M, N, K_LOCAL);
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaEventRecord(gemm_end[rank], stream[rank]));
-  }
-
-  // 先确保两个 rank 的本地/远端 epilogue 写全部结束。
   for (int rank = 0; rank < WORLD; ++rank) {
     CUDA_CHECK(cudaSetDevice(rank));
     CUDA_CHECK(cudaStreamSynchronize(stream[rank]));
+  }
+
+  dim3 block(16, 16);
+  dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
+
+  float gemm_ms_sum[WORLD] = {0.0f, 0.0f};
+  for (int iter = 0; iter < warmup_iters + repeat_iters; ++iter) {
+    for (int owner = 0; owner < WORLD; ++owner) {
+      CUDA_CHECK(cudaSetDevice(owner));
+      CUDA_CHECK(cudaMemsetAsync(owner_slots[owner], 0, WORLD * part_elems * sizeof(float), stream[owner]));
+    }
+    for (int rank = 0; rank < WORLD; ++rank) {
+      CUDA_CHECK(cudaSetDevice(rank));
+      CUDA_CHECK(cudaEventRecord(gemm_start[rank], stream[rank]));
+      partial_gemm_peer_write<<<grid, block, 0, stream[rank]>>>(
+          a[rank], b[rank], owner_slots[0], owner_slots[1], rank, M, N, K_LOCAL);
+      CUDA_CHECK(cudaGetLastError());
+      CUDA_CHECK(cudaEventRecord(gemm_end[rank], stream[rank]));
+    }
+
+    // 先确保两个 rank 的本地/远端 epilogue 写全部结束。
+    for (int rank = 0; rank < WORLD; ++rank) {
+      CUDA_CHECK(cudaSetDevice(rank));
+      CUDA_CHECK(cudaStreamSynchronize(stream[rank]));
+    }
+    if (iter >= warmup_iters) {
+      for (int rank = 0; rank < WORLD; ++rank) {
+        float iter_ms = 0.0f;
+        CUDA_CHECK(cudaSetDevice(rank));
+        CUDA_CHECK(cudaEventElapsedTime(&iter_ms, gemm_start[rank], gemm_end[rank]));
+        gemm_ms_sum[rank] += iter_ms;
+      }
+    }
   }
 
   cudaEvent_t reduce_start[WORLD], reduce_end[WORLD];
@@ -182,7 +212,7 @@ int main(int argc, char** argv) {
   float gemm_ms[WORLD], reduce_ms[WORLD];
   for (int rank = 0; rank < WORLD; ++rank) {
     CUDA_CHECK(cudaSetDevice(rank));
-    CUDA_CHECK(cudaEventElapsedTime(&gemm_ms[rank], gemm_start[rank], gemm_end[rank]));
+    gemm_ms[rank] = gemm_ms_sum[rank] / repeat_iters;
     CUDA_CHECK(cudaEventElapsedTime(&reduce_ms[rank], reduce_start[rank], reduce_end[rank]));
     cudaEventDestroy(gemm_start[rank]);
     cudaEventDestroy(gemm_end[rank]);
@@ -202,8 +232,9 @@ int main(int argc, char** argv) {
     return 1;
   }
   std::printf("PASS: every ReduceScatter output element equals K=%d\n", K);
-  std::printf("M=%d N=%d K=%d | partial GEMM: %.3f / %.3f ms, local reduce: %.3f / %.3f ms\n",
-              M, N, K, gemm_ms[0], gemm_ms[1], reduce_ms[0], reduce_ms[1]);
+  std::printf("M=%d N=%d K=%d warmup=%d repeat=%d | partial GEMM avg: %.3f / %.3f ms, local reduce: %.3f / %.3f ms\n",
+              M, N, K, warmup_iters, repeat_iters,
+              gemm_ms[0], gemm_ms[1], reduce_ms[0], reduce_ms[1]);
   std::printf("remote epilogue write 是否占用额外时间，请用 Nsight Systems 对照观察。\n");
   return 0;
 }
