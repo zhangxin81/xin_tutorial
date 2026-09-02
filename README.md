@@ -12,9 +12,12 @@
 | [`02_fused_peer_write_rs/`](02_fused_peer_write_rs/) | GEMM+ReduceScatter：epilogue peer write 到 owner slot | 同上·第七章 | CUDA C++ | 无（仅 nvcc） |
 | [`03_nvshmem_warp_specialization/`](03_nvshmem_warp_specialization/) | NVSHMEM 单 kernel 内通信/计算 warp 分工 | 同上·第八章 | CUDA C++ | NVSHMEM ≥2.x |
 | [`04_copy_engine_near_zero_sm/`](04_copy_engine_near_zero_sm/) | copy engine near-zero-SM：peer DMA copy 与 SM 计算并发 | 同上·第九章 | CUDA C++ | 无（仅 nvcc） |
+| [`05_cuda_graph_pitfalls/`](05_cuda_graph_pitfalls/) | CUDA Graph capture/replay：三条硬约束的易错场景与修复 | 《CUDA Graph：一次录制、多次重放》 | CUDA C++ | 无（仅 nvcc，单 GPU） |
 
 01~04 合起来覆盖跨 GPU 计算通信融合的四种粒度（从粗到细）：stream overlap →
 GEMM prologue/epilogue 融合 → kernel 内 warp 分工 → copy engine 硬件卸载。
+05 属于另一个轴：运行时/启动开销（CUDA Graph），与计算通信融合正交，单 GPU
+即可运行。
 
 ## 使用方式
 
@@ -41,6 +44,9 @@ README 里有对应的 nsys 命令）。
 
 - 2026-08-24：初始发布。任务 01~04（配套《GPU 计算与通信融合入门：术语、
   资源模型与四套可运行代码》），每个任务独立目录、独立环境说明。
+- 2026-09-02：新增任务 05_cuda_graph_pitfalls（配套《CUDA Graph：一次录制、
+  多次重放》）：capture/replay 的三条硬约束各构造一个可复现 bug 与对应修复，
+  附启动开销对比；单 GPU 即可运行。
 
 ## License
 
