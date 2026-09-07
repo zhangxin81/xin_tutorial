@@ -14,6 +14,8 @@ README and, for CUDA examples, its own `build_and_run.sh`.
 - `04_copy_engine_near_zero_sm/`: CUDA C++ peer-copy/copy-engine example.
 - `05_cuda_graph_pitfalls/`: CUDA C++ CUDA Graph capture/replay pitfall-and-fix
   examples (three hard constraints); single-GPU task.
+- `06_programmatic_dependent_launch/`: CUDA C++ + Triton Programmatic Dependent
+  Launch (PDL) producer/consumer overlap demos (SM90+ required, single GPU).
 
 Keep examples small, readable, and easy to profile. Prefer local fixes inside
 the relevant numbered task directory unless a shared document or script clearly

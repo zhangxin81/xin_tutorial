@@ -13,11 +13,12 @@
 | [`03_nvshmem_warp_specialization/`](03_nvshmem_warp_specialization/) | NVSHMEM 单 kernel 内通信/计算 warp 分工 | 同上·第八章 | CUDA C++ | NVSHMEM ≥2.x |
 | [`04_copy_engine_near_zero_sm/`](04_copy_engine_near_zero_sm/) | copy engine near-zero-SM：peer DMA copy 与 SM 计算并发 | 同上·第九章 | CUDA C++ | 无（仅 nvcc） |
 | [`05_cuda_graph_pitfalls/`](05_cuda_graph_pitfalls/) | CUDA Graph capture/replay：三条硬约束的易错场景与修复 | 《CUDA Graph：一次录制、多次重放》 | CUDA C++ | 无（仅 nvcc，单 GPU） |
+| [`06_programmatic_dependent_launch/`](06_programmatic_dependent_launch/) | PDL：同 stream 后继 kernel 提前启动与 producer/consumer 重叠 | 《在 H100 上看见 PDL》 | CUDA C++ + Python | triton demo 需 torch+triton ≥3.5 |
 
 01~04 合起来覆盖跨 GPU 计算通信融合的四种粒度（从粗到细）：stream overlap →
 GEMM prologue/epilogue 融合 → kernel 内 warp 分工 → copy engine 硬件卸载。
-05 属于另一个轴：运行时/启动开销（CUDA Graph），与计算通信融合正交，单 GPU
-即可运行。
+05、06 属于另一个轴：kernel 交界处的开销（05 管 host 侧提交开销，06 管 device
+侧 kernel 间空档），与计算通信融合正交，单 GPU 即可运行。
 
 ## 使用方式
 
