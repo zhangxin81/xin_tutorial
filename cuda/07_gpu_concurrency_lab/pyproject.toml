@@ -1,0 +1,28 @@
+# 任务 07：单卡并发组织基准（独立环境配置）
+#
+# 安装方式（在本目录下）：
+#   python3 -m venv .venv && source .venv/bin/activate
+#   pip install .
+# block_slot 微基准不依赖 Python 包，只需 nvcc（见 build_and_run.sh）。
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xin-tutorial-07-gpu-concurrency"
+version = "0.1.0"
+description = "教程示例七：单 Stream / 多 Stream / 多进程+MPS 的 P99-吞吐并发基准"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "torch>=2.3",
+    "transformers>=4.45",
+    "accelerate>=0.33",
+    "safetensors>=0.4",
+]
+
+[tool.setuptools]
+# 本任务是可直接运行的脚本，不提供可导入的 Python 包。
+packages = []

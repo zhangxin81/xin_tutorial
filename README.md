@@ -13,7 +13,7 @@
 | 门类 | 收录范围 | 任务 |
 |---|---|---|
 | [`communication/`](communication/) | **通信**：多卡互联与计算通信融合——NCCL/NVSHMEM/P2P、集合通信、copy engine | 01~04 |
-| [`cuda/`](cuda/) | **CUDA**：编程模型与运行时特性——stream/event、Graph、launch 机制、内存 API | 05~06 |
+| [`cuda/`](cuda/) | **CUDA**：编程模型与运行时特性——stream/event、Graph、launch 机制、内存 API | 05~07 |
 | `kernel/`（规划中） | **Kernel**：kernel 编写与优化——warp primitives、Triton/CUTLASS、融合策略 | — |
 | `fundamentals/`（规划中） | **基础**：体系结构与系统底座——SM/warp 结构、内存层级、带宽与延迟、数值格式 | — |
 | `parallelism/`（规划中） | **并行策略**：模型与张量怎么切——DP/TP/SP/PP/EP、ZeRO/FSDP、分片与重分片 | — |
@@ -40,6 +40,7 @@
 |---|---|---|---|---|
 | [`cuda/05_cuda_graph_pitfalls/`](cuda/05_cuda_graph_pitfalls/) | CUDA Graph capture/replay：三条硬约束的易错场景与修复 | 《CUDA Graph：一次录制、多次重放》 | CUDA C++ | 无（仅 nvcc，单 GPU） |
 | [`cuda/06_programmatic_dependent_launch/`](cuda/06_programmatic_dependent_launch/) | PDL：同 stream 后继 kernel 提前启动与 producer/consumer 重叠 | 《在 H100 上看见 PDL》 | CUDA C++ + Python | triton demo 需 torch+triton ≥3.5 |
+| [`cuda/07_gpu_concurrency_lab/`](cuda/07_gpu_concurrency_lab/) | 单卡并发组织：单/多 Stream 与多进程+MPS 在固定 P99 SLA 下的吞吐权衡 | —（独立实验，暂无配套教程） | Python + CUDA C++ | torch+transformers；MPS 需 Linux；单 GPU |
 
 两条内容主线，恰好对应现有两个门类：
 
@@ -47,7 +48,8 @@
   stream overlap → GEMM prologue/epilogue 融合 → kernel 内 warp 分工 →
   copy engine 硬件卸载；
 - **CUDA**：05、06 聚焦 kernel 交界处的开销（05 管 host 侧提交开销，06 管
-  device 侧 kernel 间空档），与计算通信融合正交，单 GPU 即可运行。
+  device 侧 kernel 间空档），07 再往上一层比单卡并发组织（多 Stream / 多进程
+  +MPS）在固定 P99 SLA 下的吞吐上限；与计算通信融合正交，单 GPU 即可运行。
 
 ## 使用方式
 
@@ -79,6 +81,9 @@ README 里有对应的 nsys 命令）。
   附启动开销对比；单 GPU 即可运行。
 - 2026-09-07：新增任务 06_programmatic_dependent_launch（配套《在 H100 上
   看见 PDL》）：CUDA C++ 与 Triton 双版本 producer/consumer 重叠 demo。
+- 2026-09-08：新增任务 07_gpu_concurrency_lab（`cuda/`）：单 Stream / 多
+  Stream / 多进程+MPS 三种并发组织在固定 P99 SLA 下的单卡吞吐对比基准，含
+  block slot 占用微基准与多 Stream 输出一致性检查；单 GPU 可运行。
 - 2026-09-08：建立门类目录结构：01~04 移入 `communication/`，05、06 移入
   `cuda/`，任务编号不变、git 历史保留；同时规划 `kernel/`、`fundamentals/`、
   `parallelism/`、`systems/` 四个门类，各自随首个任务落地。

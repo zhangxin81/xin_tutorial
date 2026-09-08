@@ -22,6 +22,10 @@ folders own the theme, task numbers own the order; never renumber tasks.
 - `cuda/06_programmatic_dependent_launch/`: CUDA C++ + Triton Programmatic
   Dependent Launch (PDL) producer/consumer overlap demos (SM90+ required,
   single GPU).
+- `cuda/07_gpu_concurrency_lab/`: Python + CUDA C++ single-GPU concurrency
+  benchmark comparing single-stream, multi-stream, and multi-process (NVIDIA
+  MPS) modes under a fixed P99 SLA, plus a block-slot occupancy
+  microbenchmark; single-GPU task.
 
 Planned categories with no tasks yet: `kernel/` (kernel authoring and
 optimization, e.g. warp primitives, Triton/CUTLASS, fusion strategies),

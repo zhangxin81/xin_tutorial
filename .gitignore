@@ -19,6 +19,10 @@ profiles/
 *.qdstrc
 *.ncu-rep
 
+# 基准运行产物（任务 07 benchmark.py / run_sweep.py 默认输出）
+results/
+result.json
+
 # 编辑器/系统
 .DS_Store
 .idea/
