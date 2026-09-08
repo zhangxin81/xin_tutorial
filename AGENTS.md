@@ -95,6 +95,10 @@ Use `docs/NVSHMEM_SETUP_NOTES.md` as the source of truth for:
 - Keep environment-specific absolute paths only when they are generic system
   paths needed to run commands, such as `/tmp`, `/usr/local/cuda`, or
   `/usr/lib/x86_64-linux-gnu/nvidia/current`.
+- Every other absolute path must be rewritten under the shared virtual prefix
+  `/path/to` (for example `/path/to/model`). The prefix is user-configurable
+  per run with `--virtual-prefix <prefix>` or the `XIN_VIRTUAL_PREFIX`
+  environment variable; a configured prefix replaces the default.
 
 ## Commit Gate
 
@@ -116,6 +120,9 @@ scripts/check_sensitive_paths.sh --all
 
 - If the check fails, replace sensitive values with relative paths or
   placeholders. Do not bypass the hook for documentation changes.
+- To check against a different virtual prefix (replacing the default
+  `/path/to`), add `--virtual-prefix <prefix>` to either command or export
+  `XIN_VIRTUAL_PREFIX`.
 
 ## Editing Style
 
