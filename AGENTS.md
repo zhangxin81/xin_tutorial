@@ -4,21 +4,40 @@ Scope: this file applies to everything under `xin_tutorial/`.
 
 ## Project Shape
 
-This repository contains standalone tutorial examples for GPU communication and
-compute overlap. Each numbered directory is an independent task with its own
-README and, for CUDA examples, its own `build_and_run.sh`.
+This repository contains standalone tutorial examples for GPU systems topics.
+Tasks live under thematic **category** directories; each task directory keeps a
+globally sequential task number (publication order) and is independent, with
+its own README and, for CUDA examples, its own `build_and_run.sh`. Category
+folders own the theme, task numbers own the order; never renumber tasks.
 
-- `01_stream_overlap/`: PyTorch/NCCL stream overlap example.
-- `02_fused_peer_write_rs/`: CUDA C++ fused peer-write reduce-scatter example.
-- `03_nvshmem_warp_specialization/`: CUDA C++ NVSHMEM warp-specialization example.
-- `04_copy_engine_near_zero_sm/`: CUDA C++ peer-copy/copy-engine example.
-- `05_cuda_graph_pitfalls/`: CUDA C++ CUDA Graph capture/replay pitfall-and-fix
-  examples (three hard constraints); single-GPU task.
-- `06_programmatic_dependent_launch/`: CUDA C++ + Triton Programmatic Dependent
-  Launch (PDL) producer/consumer overlap demos (SM90+ required, single GPU).
+- `communication/01_stream_overlap/`: PyTorch/NCCL stream overlap example.
+- `communication/02_fused_peer_write_rs/`: CUDA C++ fused peer-write
+  reduce-scatter example.
+- `communication/03_nvshmem_warp_specialization/`: CUDA C++ NVSHMEM
+  warp-specialization example.
+- `communication/04_copy_engine_near_zero_sm/`: CUDA C++ peer-copy/copy-engine
+  example.
+- `cuda/05_cuda_graph_pitfalls/`: CUDA C++ CUDA Graph capture/replay
+  pitfall-and-fix examples (three hard constraints); single-GPU task.
+- `cuda/06_programmatic_dependent_launch/`: CUDA C++ + Triton Programmatic
+  Dependent Launch (PDL) producer/consumer overlap demos (SM90+ required,
+  single GPU).
+
+Planned categories with no tasks yet: `kernel/` (kernel authoring and
+optimization, e.g. warp primitives, Triton/CUTLASS, fusion strategies),
+`fundamentals/` (architecture and systems basics, e.g. SM/warp structure,
+memory hierarchy, bandwidth/latency, numeric formats), `parallelism/`
+(parallelism strategies, e.g. DP/TP/SP/PP/EP, ZeRO/FSDP, sharding and
+resharding), and `systems/` (inference/training framework mechanics, e.g.
+continuous batching, PagedAttention, KV cache management, scheduling).
+Further themes (e.g. profiling methodology) may become categories later.
+When adding a task: pick the closest existing category (or create the
+directory when a planned or new theme gets its first task), continue the
+global numbering, and update the README category table, task index, and
+update log.
 
 Keep examples small, readable, and easy to profile. Prefer local fixes inside
-the relevant numbered task directory unless a shared document or script clearly
+the relevant task directory unless a shared document or script clearly
 needs an update.
 
 ## Running And Profiling
@@ -26,7 +45,8 @@ needs an update.
 - These examples generally require a GPU worker with at least 2 NVIDIA GPUs on
   one node.
 - Keep profiling output outside this repo directory when possible, for example
-  under `../worker_results/<run_name>/`.
+  under `../worker_results/<run_name>/` relative to the repo root (from inside
+  a task directory: `../../../worker_results/<run_name>/`).
 - Use Nsight Systems for timeline validation. See `docs/NSYS_USAGE.md` for install,
   `nsys profile`, and `nsys export` examples.
 - For task 03 NVSHMEM setup and known environment pitfalls, read
@@ -66,8 +86,8 @@ Use `docs/NVSHMEM_SETUP_NOTES.md` as the source of truth for:
 
 - Do not commit personal workspace paths, user names, worker ids, pod IPs, or
   trial names in documentation.
-- Prefer relative paths such as `03_nvshmem_warp_specialization/` and
-  `../worker_results/<run_name>/`.
+- Prefer relative paths such as `communication/03_nvshmem_warp_specialization/`
+  and `../worker_results/<run_name>/`.
 - Keep environment-specific absolute paths only when they are generic system
   paths needed to run commands, such as `/tmp`, `/usr/local/cuda`, or
   `/usr/lib/x86_64-linux-gnu/nvidia/current`.

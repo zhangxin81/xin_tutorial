@@ -3,7 +3,7 @@
 This note records the NVSHMEM setup used to run and profile:
 
 ```text
-xin_tutorial/03_nvshmem_warp_specialization
+xin_tutorial/communication/03_nvshmem_warp_specialization
 ```
 
 The verified run used one MLX GPU worker with 2x H100 GPUs. Commands below
@@ -61,7 +61,7 @@ Task 03 needs an H100-compatible architecture flag. The local
 `build_and_run.sh` supports `CUDA_ARCH` and `NVCC_FLAGS`.
 
 ```bash
-cd 03_nvshmem_warp_specialization
+cd communication/03_nvshmem_warp_specialization
 
 NVSHMEM_HOME="${NVSHMEM_HOME}" \
 NVCC=/usr/local/cuda-12.9/bin/nvcc \

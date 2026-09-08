@@ -108,4 +108,4 @@ nsys-ui report05.nsys-rep
 - s3bad:非图 + 1ms 提交间隙,旧值 0/1048576(碰巧没事);无间隙裸跑与进图
   replay 均为 1048576/1048576,时间线确认写/读两 kernel 并发约 148 us;
   s3fix 显式 event 边后完全串行,间隔 0.3 us——背靠背但有序。
-- 完整日志与 nsys 报告:`../../worker_results/run_20260902_05_cuda_graph/`。
+- 完整日志与 nsys 报告:`../../../worker_results/run_20260902_05_cuda_graph/`。
