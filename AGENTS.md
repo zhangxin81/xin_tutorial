@@ -58,6 +58,9 @@ needs an update.
   a task directory: `../../../worker_results/<run_name>/`).
 - Use Nsight Systems for timeline validation. See `docs/NSYS_USAGE.md` for install,
   `nsys profile`, and `nsys export` examples.
+- Use Nsight Compute for kernel-level metrics and SASS evidence. See
+  `docs/NCU_USAGE.md` for install, `ncu` profile/export, and the H100 GEMM
+  workflow used by task 08.
 - For task 03 NVSHMEM setup and known environment pitfalls, read
   `docs/NVSHMEM_SETUP_NOTES.md` before changing code or rerunning.
 
