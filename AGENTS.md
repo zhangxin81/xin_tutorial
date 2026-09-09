@@ -26,6 +26,11 @@ folders own the theme, task numbers own the order; never renumber tasks.
   benchmark comparing single-stream, multi-stream, and multi-process (NVIDIA
   MPS) modes under a fixed P99 SLA, plus a block-slot occupancy
   microbenchmark; single-GPU task.
+- `cuda/08_h100_gemm_tile_hierarchy_ncu/`: CUDA C++ cuBLASLt BF16 GEMM
+  benchmark plus Nsight Compute workflow that reconstructs the
+  threadblock/warp/thread tiling hierarchy of the selected SM90 library
+  kernel from kernel-name hints, launch statistics, SASS instructions, and
+  TMA traffic counters; H100 (SM90) task.
 
 Planned categories with no tasks yet: `kernel/` (kernel authoring and
 optimization, e.g. warp primitives, Triton/CUTLASS, fusion strategies),

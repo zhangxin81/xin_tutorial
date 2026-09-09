@@ -27,3 +27,6 @@ result.json
 .DS_Store
 .idea/
 .vscode/
+
+# NCU archive backups (task 08)
+cuda/08_h100_gemm_tile_hierarchy_ncu/reports/archive/

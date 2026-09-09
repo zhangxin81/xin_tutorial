@@ -13,7 +13,7 @@
 | 门类 | 收录范围 | 任务 |
 |---|---|---|
 | [`communication/`](communication/) | **通信**：多卡互联与计算通信融合——NCCL/NVSHMEM/P2P、集合通信、copy engine | 01~04 |
-| [`cuda/`](cuda/) | **CUDA**：编程模型与运行时特性——stream/event、Graph、launch 机制、内存 API | 05~07 |
+| [`cuda/`](cuda/) | **CUDA**：编程模型与运行时特性——stream/event、Graph、launch 机制、内存 API、NCU 剖析 | 05~08 |
 | `kernel/`（规划中） | **Kernel**：kernel 编写与优化——warp primitives、Triton/CUTLASS、融合策略 | — |
 | `fundamentals/`（规划中） | **基础**：体系结构与系统底座——SM/warp 结构、内存层级、带宽与延迟、数值格式 | — |
 | `parallelism/`（规划中） | **并行策略**：模型与张量怎么切——DP/TP/SP/PP/EP、ZeRO/FSDP、分片与重分片 | — |
@@ -21,7 +21,7 @@
 
 新任务按文章主线就近归入现有门类；规划中的门类随各自**首个任务**落地建
 目录；再往后仍有装不下的新主题（如性能分析方法论、数值算法）时照此扩展，
-并同步更新本表与下方索引。编号从 07 继续往下排。
+并同步更新本表与下方索引。编号从 09 继续往下排。
 
 ## 任务索引
 
@@ -41,6 +41,7 @@
 | [`cuda/05_cuda_graph_pitfalls/`](cuda/05_cuda_graph_pitfalls/) | CUDA Graph capture/replay：三条硬约束的易错场景与修复 | 《CUDA Graph：一次录制、多次重放》 | CUDA C++ | 无（仅 nvcc，单 GPU） |
 | [`cuda/06_programmatic_dependent_launch/`](cuda/06_programmatic_dependent_launch/) | PDL：同 stream 后继 kernel 提前启动与 producer/consumer 重叠 | 《在 H100 上看见 PDL》 | CUDA C++ + Python | triton demo 需 torch+triton ≥3.5 |
 | [`cuda/07_gpu_concurrency_lab/`](cuda/07_gpu_concurrency_lab/) | 单卡并发组织：单/多 Stream 与多进程+MPS 在固定 P99 SLA 下的吞吐权衡 | —（独立实验，暂无配套教程） | Python + CUDA C++ | torch+transformers；MPS 需 Linux；单 GPU |
+| [`cuda/08_h100_gemm_tile_hierarchy_ncu/`](cuda/08_h100_gemm_tile_hierarchy_ncu/) | 用 NCU+SASS 读出 cuBLASLt GEMM 的 threadblock/warp/thread 三级分块 | 《矩阵乘法在 H100 上是怎么分块计算的》 | CUDA C++ | 仅 nvcc+NCU；需 H100（SM90） |
 
 两条内容主线，恰好对应现有两个门类：
 
@@ -49,7 +50,8 @@
   copy engine 硬件卸载；
 - **CUDA**：05、06 聚焦 kernel 交界处的开销（05 管 host 侧提交开销，06 管
   device 侧 kernel 间空档），07 再往上一层比单卡并发组织（多 Stream / 多进程
-  +MPS）在固定 P99 SLA 下的吞吐上限；与计算通信融合正交，单 GPU 即可运行。
+  +MPS）在固定 P99 SLA 下的吞吐上限；08 则往下钻进 kernel 内部，用 NCU 指令
+  证据读出库 GEMM 的三级分块设计。全部单 GPU 即可运行。
 
 ## 使用方式
 
@@ -87,6 +89,10 @@ README 里有对应的 nsys 命令）。
 - 2026-09-08：建立门类目录结构：01~04 移入 `communication/`，05、06 移入
   `cuda/`，任务编号不变、git 历史保留；同时规划 `kernel/`、`fundamentals/`、
   `parallelism/`、`systems/` 四个门类，各自随首个任务落地。
+- 2026-09-09：新增任务 08_h100_gemm_tile_hierarchy_ncu（`cuda/`，配套
+  《矩阵乘法在 H100 上是怎么分块计算的》）：cuBLASLt 8192³ BF16 GEMM 的
+  NCU 剖析，从 kernel 名、Launch Statistics、SASS 指令与 TMA 流量四路证据
+  交叉验证 threadblock/warp/thread 三级 tile，附已验证采集的证据文件。
 
 ## License
 

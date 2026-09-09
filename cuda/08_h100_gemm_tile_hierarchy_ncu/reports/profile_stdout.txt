@@ -1,0 +1,12 @@
+==PROF== Connected to process 2163 (./build/h100_cublaslt_gemm)
+==WARNING== Unable to access the following 6 metrics: ctc__rx_bytes_data_user.sum, ctc__rx_bytes_data_user.sum.pct_of_peak_sustained_elapsed, ctc__rx_bytes_data_user.sum.per_second, ctc__tx_bytes_data_user.sum, ctc__tx_bytes_data_user.sum.pct_of_peak_sustained_elapsed, ctc__tx_bytes_data_user.sum.per_second.
+
+
+==PROF== Profiling "nvjet_tss_320x128_64x3_1x2_h_..." - 0 (1/1): 0%....50%....100% - 39 passes
+device=NVIDIA H100 80GB HBM3 sm=90
+problem=C = A[M,K] x B[K,N], column-major cuBLASLt, bf16 inputs, fp32 output
+M=8192 N=8192 K=8192 warmup=20 iters=200
+avg_ms=1.50413
+tflops=730.995
+==PROF== Disconnected from process 2163
+==PROF== Report: ./reports/h100_cublaslt_gemm.ncu-rep
