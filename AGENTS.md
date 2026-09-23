@@ -31,10 +31,21 @@ folders own the theme, task numbers own the order; never renumber tasks.
   threadblock/warp/thread tiling hierarchy of the selected SM90 library
   kernel from kernel-name hints, launch statistics, SASS instructions, and
   TMA traffic counters; H100 (SM90) task.
+- `cuda/09_cutlass_grouped_gemm_scheduler_ncu/`: CUDA C++ CUTLASS grouped
+  GEMM benchmark (example 57 based) plus a torch `_grouped_mm` timing script
+  and an NCU workflow that justifies the Pingpong-vs-Cooperative scheduler
+  choice on a MoE expert-projection shape via the tile count, the accumulator
+  register budget, SASS setmaxnreg/TMA-multicast evidence, and Warp State
+  stall composition; H100 (SM90) task.
+- `kernel/10_b200_fused_add_rmsnorm_ncu/`: Python + CUDA C++ ladder for the
+  fused residual-add + RMSNorm operator (hidden 8192, BF16) on B200: official
+  Triton baseline, Triton tuning (maxnreg), CUTE DSL copy-atom variant, CUDA
+  C++ uint4/BF16x2 kernels, rows-keyed CUDA Graph dispatch, plus documented
+  negative results (TMA staging, cache hints, inline PTX, benchmark-aware
+  caches) and a reproducible NCU capture/analysis workflow with kept raw
+  CSV/SASS evidence; B200 (SM100) task, single GPU.
 
-Planned categories with no tasks yet: `kernel/` (kernel authoring and
-optimization, e.g. warp primitives, Triton/CUTLASS, fusion strategies),
-`fundamentals/` (architecture and systems basics, e.g. SM/warp structure,
+Planned categories with no tasks yet: `fundamentals/` (architecture and systems basics, e.g. SM/warp structure,
 memory hierarchy, bandwidth/latency, numeric formats), `parallelism/`
 (parallelism strategies, e.g. DP/TP/SP/PP/EP, ZeRO/FSDP, sharding and
 resharding), and `systems/` (inference/training framework mechanics, e.g.

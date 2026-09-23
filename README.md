@@ -13,15 +13,15 @@
 | 门类 | 收录范围 | 任务 |
 |---|---|---|
 | [`communication/`](communication/) | **通信**：多卡互联与计算通信融合——NCCL/NVSHMEM/P2P、集合通信、copy engine | 01~04 |
-| [`cuda/`](cuda/) | **CUDA**：编程模型与运行时特性——stream/event、Graph、launch 机制、内存 API、NCU 剖析 | 05~08 |
-| `kernel/`（规划中） | **Kernel**：kernel 编写与优化——warp primitives、Triton/CUTLASS、融合策略 | — |
+| [`cuda/`](cuda/) | **CUDA**：编程模型与运行时特性——stream/event、Graph、launch 机制、内存 API、NCU 剖析 | 05~09 |
+| [`kernel/`](kernel/) | **Kernel**：kernel 编写与优化——warp primitives、Triton/CUTLASS、融合策略 | 10 |
 | `fundamentals/`（规划中） | **基础**：体系结构与系统底座——SM/warp 结构、内存层级、带宽与延迟、数值格式 | — |
 | `parallelism/`（规划中） | **并行策略**：模型与张量怎么切——DP/TP/SP/PP/EP、ZeRO/FSDP、分片与重分片 | — |
 | `systems/`（规划中） | **系统**：推理/训练框架机制——continuous batching、PagedAttention、KV cache 管理与调度 | — |
 
 新任务按文章主线就近归入现有门类；规划中的门类随各自**首个任务**落地建
 目录；再往后仍有装不下的新主题（如性能分析方法论、数值算法）时照此扩展，
-并同步更新本表与下方索引。编号从 09 继续往下排。
+并同步更新本表与下方索引。编号从 11 继续往下排。
 
 ## 任务索引
 
@@ -42,8 +42,15 @@
 | [`cuda/06_programmatic_dependent_launch/`](cuda/06_programmatic_dependent_launch/) | PDL：同 stream 后继 kernel 提前启动与 producer/consumer 重叠 | 《在 H100 上看见 PDL》 | CUDA C++ + Python | triton demo 需 torch+triton ≥3.5 |
 | [`cuda/07_gpu_concurrency_lab/`](cuda/07_gpu_concurrency_lab/) | 单卡并发组织：单/多 Stream 与多进程+MPS 在固定 P99 SLA 下的吞吐权衡 | —（独立实验，暂无配套教程） | Python + CUDA C++ | torch+transformers；MPS 需 Linux；单 GPU |
 | [`cuda/08_h100_gemm_tile_hierarchy_ncu/`](cuda/08_h100_gemm_tile_hierarchy_ncu/) | 用 NCU+SASS 读出 cuBLASLt GEMM 的 threadblock/warp/thread 三级分块 | 《矩阵乘法在 H100 上是怎么分块计算的》 | CUDA C++ | 仅 nvcc+NCU；需 H100（SM90） |
+| [`cuda/09_cutlass_grouped_gemm_scheduler_ncu/`](cuda/09_cutlass_grouped_gemm_scheduler_ncu/) | CUTLASS grouped GEMM 调度族选型：Pingpong vs Cooperative 的 tile/寄存器/阻塞三笔账 | 《torch 凭什么比手写 CUTLASS 快 25%？》 | CUDA C++ + Python | 仅 nvcc+NCU+torch；需 H100（SM90） |
 
-两条内容主线，恰好对应现有两个门类：
+### Kernel · kernel/
+
+| 目录 | 主题 | 来源教程 | 语言 | 额外依赖 |
+|---|---|---|---|---|
+| [`kernel/10_b200_fused_add_rmsnorm_ncu/`](kernel/10_b200_fused_add_rmsnorm_ncu/) | B200 上 fused add+RMSNorm 的完整优化阶梯：Triton→CUTE DSL→CUDA C++→CUDA Graph，含 TMA/cache hint/inline PTX 等负例与 NCU 分析全流程 | 《24 小时冲上 NVIDIA kernel 榜单第 15：一次 Agent 自动寻优的完整拆解》（待发布） | Python + CUDA C++ | torch+triton；021 需 CUTLASS Python DSL；NCU 采集需 B200 |
+
+三条内容主线，恰好对应现有三个门类：
 
 - **通信**：01~04 合起来覆盖跨 GPU 计算通信融合的四种粒度（从粗到细）：
   stream overlap → GEMM prologue/epilogue 融合 → kernel 内 warp 分工 →
@@ -51,7 +58,11 @@
 - **CUDA**：05、06 聚焦 kernel 交界处的开销（05 管 host 侧提交开销，06 管
   device 侧 kernel 间空档），07 再往上一层比单卡并发组织（多 Stream / 多进程
   +MPS）在固定 P99 SLA 下的吞吐上限；08 则往下钻进 kernel 内部，用 NCU 指令
-  证据读出库 GEMM 的三级分块设计。全部单 GPU 即可运行。
+  证据读出库 GEMM 的三级分块设计；09 用同一套 NCU 方法回答"同一份 CUTLASS，
+  调度族和 tile 该怎么选"。全部单 GPU 即可运行；
+- **Kernel**：10 从零打完一条真实算子（fused add+RMSNorm）的优化阶梯——
+  先锁语义（两个 BF16 舍入点），再从官方 Triton 基线一路走到 CUDA Graph，
+  正例与负例同样留档，NCU 报告贯穿每个版本的去留判断。单 GPU 即可运行。
 
 ## 使用方式
 
@@ -93,6 +104,16 @@ README 里有对应的 nsys 命令）。
   《矩阵乘法在 H100 上是怎么分块计算的》）：cuBLASLt 8192³ BF16 GEMM 的
   NCU 剖析，从 kernel 名、Launch Statistics、SASS 指令与 TMA 流量四路证据
   交叉验证 threadblock/warp/thread 三级 tile，附已验证采集的证据文件。
+- 2026-09-23：新增任务 10_b200_fused_add_rmsnorm_ncu（新建 `kernel/` 门类，
+  配套《24 小时冲上 NVIDIA kernel 榜单第 15》：B200 上 fused add+RMSNorm 从官方
+  Triton 基线到 CUDA Graph 的完整版本阶梯，含 NCU 采集/分析脚本与已验证
+  报告，TMA、cache hint、inline PTX、benchmark-aware 缓存等负例一并留档）。
+- 2026-09-11：新增任务 09_cutlass_grouped_gemm_scheduler_ncu（`cuda/`，配套
+  《torch 凭什么比手写 CUTLASS 快 25%？》）：CUTLASS grouped GEMM 在
+  Pingpong 与 Cooperative 两套调度族间的选型实证——tile 账（80 vs 320 个
+  输出 tile 对 132 个 SM）、寄存器账（累加器 256 regs 上限）与 Warp State
+  阻塞构成（Barrier vs Long Scoreboard）；附 torch 对比基准与 NCU 采集/
+  解析脚本（profiling 产物按规范写在仓库外 worker_results/）。
 
 ## License
 

@@ -1,0 +1,8 @@
+# generated at import time by the CUDA submission wrappers
+experiments/**/_binding_local.cpp
+__pycache__/
+*.pyc
+*.so
+*.o
+*.ncu-rep
+experiments/ncu_out/
