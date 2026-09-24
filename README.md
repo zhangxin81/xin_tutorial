@@ -23,6 +23,9 @@
 目录；再往后仍有装不下的新主题（如性能分析方法论、数值算法）时照此扩展，
 并同步更新本表与下方索引。编号从 11 继续往下排。
 
+另有 [`references/`](references/) 目录收录第三方经典公开资料存档（非原创
+任务，不占编号），收录原则与免责声明见其 README。
+
 ## 任务索引
 
 ### 通信 · communication/
@@ -114,6 +117,15 @@ README 里有对应的 nsys 命令）。
   输出 tile 对 132 个 SM）、寄存器账（累加器 256 regs 上限）与 Warp State
   阻塞构成（Barrier vs Long Scoreboard）；附 torch 对比基准与 NCU 采集/
   解析脚本（profiling 产物按规范写在仓库外 worker_results/）。
+- 2026-09-24：新建 `references/` 目录（第三方经典资料存档，不占任务编号），
+  首份收录 Mark Harris《Optimizing Parallel Reduction in CUDA》讲稿
+  （CUDA 并行归约 7 级优化经典教程，版权归 NVIDIA 所有，仅供学习交流，
+  侵权请联系删除）。
+
+## 参考资料
+
+- 2026-09-24 起新增 [`references/`](references/) 目录：存档第三方经典公开
+  资料（讲稿、论文等），仅供学习交流，版权归原作者所有，侵权请联系删除。
 
 ## License
 

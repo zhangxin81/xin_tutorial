@@ -45,6 +45,12 @@ folders own the theme, task numbers own the order; never renumber tasks.
   caches) and a reproducible NCU capture/analysis workflow with kept raw
   CSV/SASS evidence; B200 (SM100) task, single GPU.
 
+- `references/`: archive of third-party public materials (classic slides,
+  papers). Not original tasks — never assign task numbers here. Each entry
+  must be attributed to its original author/publisher in
+  `references/README.md`, which also carries the study-use-only disclaimer
+  (copyright stays with the owner; remove on request).
+
 Planned categories with no tasks yet: `fundamentals/` (architecture and systems basics, e.g. SM/warp structure,
 memory hierarchy, bandwidth/latency, numeric formats), `parallelism/`
 (parallelism strategies, e.g. DP/TP/SP/PP/EP, ZeRO/FSDP, sharding and
